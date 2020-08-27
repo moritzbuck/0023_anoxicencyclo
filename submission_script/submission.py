@@ -780,13 +780,26 @@ for f in sags_to_submit:
 def get_assembly_ids(sample_id):
     try :
         sample_id = Entrez.read(Entrez.esearch(db="biosample", term = sample_id, idtype="acc"))['IdList'][0]
-        sample_accession = Entrez.read(Entrez.esummary(db="biosample",
-                                                       id = sample_id))['DocumentSummarySet']['DocumentSummary'][0]['Accession']
+        sample_accession = Entrez.read(Entrez.esummary(db="biosample", id = sample_id))['DocumentSummarySet']['DocumentSummary'][0]['Accession']
         assembly_ids = Entrez.read(Entrez.esearch(db="assembly", term = sample_accession, idtype="acc"))['IdList'][0]
         assembly_accession = Entrez.read(Entrez.esummary(db="assembly", id = assembly_ids))['DocumentSummarySet']['DocumentSummary'][0]['AssemblyAccession']
     except:
         return None
     return assembly_accession
+
+def get_sample_readinfo(id):
+    sample_ids = Entrez.read(Entrez.esearch(db="sra", term = id, idtype="acc"))['IdList']
+    out = {}
+    for sample_id in sample_ids:
+        xml = Entrez.read(Entrez.esummary(db="sra", id = sample_id))[0]['ExpXml']
+        root = ET.XML( "<WTF>" + xml + "</WTF>")
+        stats = [ll for ll in [l for l in root if l.tag =="Summary"][0] if ll.tag == "Statistics"][0].attrib
+        sra_id = [l for l in root if l.tag =="Submitter"][0].attrib['acc']
+        title = [ll for ll in [l for l in root if l.tag =="Summary"][0] if ll.tag == "Title"][0].text
+        stats['title'] = title
+        stats['sample_id'] = id
+        out.update({sra_id : stats})
+    return out
 
 def get_MG_ids(sample_id):
     try :
@@ -808,4 +821,36 @@ def get_MG_ids(sample_id):
 def motu_stats(motu) :
     tax = consensus_tax(motu)
     mean_anis = mean([l[2] for l in motu_full[motu]['ANIs']])
-    
+    mean_good_anis = mean([l[2] for l in motu_full[motu]['ANIs'] if is_good(l[0]) and is_good(l[1])])
+    mean_decent_anis = mean([l[2] for l in motu_full[motu]['ANIs'] if is_decent(l[0]) and is_decent(l[1])])
+    nb_genomes = len(motu_full[motu]['genomes'])
+    nb_goods = sum([is_good(g['name'])  for g in motu_full[motu]['genomes']])
+    nb_decents = sum([is_decent(g['name'])  for g in motu_full[motu]['genomes']])
+    return {'mean_ANI' : mean_anis, 'consensus_tax' : tax, 'mean_good_ANIs' : mean_good_anis, 'mean_decent_ANIs' :mean_decent_anis, 'nb_genomes' : nb_genomes, 'nb_good_genomes' : nb_goods, 'nb_decent_genomes' : nb_decents}
+
+
+sag_folder = "/home/moritz/data/data_submit/assemblies"
+ass2md = { ass : get_assembly_stats(ass) for ass in tqdm([o for o in os.listdir(sag_folder) if o.endswith(".fna.bz2")])}
+
+def get_assembly_stats(ass):
+    stats = {}
+    with bz2.open(pjoin(sag_folder, ass ), "rt") as handle:
+        fna = [str(s.seq) for s in  SeqIO.parse(handle, "fasta")]
+
+    stats['length'] = sum([len(l) for l in fna])
+    stats['GC'] = sum([l.count("G") + l.count("C") for l in fna])/stats['length']
+    stats['nb_contigs'] = len(fna)
+    stats['path'] = pjoin("assembly",ass + ".tar.gz")
+
+    sample = ass[:-8]
+    sample = sample.replace("-","_") if sample.startswith("Loc") else sample
+
+    if sample in sample2sra:
+        stats['type'] = "single_sample_assembly"
+        stats['libraries'] = sample2sra[sample]
+    else :
+        with open("metadata/coassemblies/" + sample + ".txt") as handle:
+            samples = [l[:-1].replace("-","_") if l[:-1].startswith("Loc") else l[:-1]  for l in handle]
+        stats['type'] = "coassembly_assembly"
+        stats['libraries'] = ";".join([sample2sra[l] for l in samples])
+    return stats
