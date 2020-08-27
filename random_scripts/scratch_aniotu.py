@@ -59,3 +59,8 @@ def get_inters(tt):
 def get_simi(l1, l2):
     v = len(l1.intersection(l2))/len(l2)
     return v
+
+
+
+
+header = ["query_name" , "ortholog" , "evalue" , "score" , "taxo" , "name" , "GO-terms" , "EC" , "KO" , "Pathway" , "Module" , "Reaction" , "rclass" , "BRITE" , "KEGG_TC" , "CAZy " , "BiGG" , "tax_scope" , "OG" , "deprecated" , "COG_category" , "description"]
