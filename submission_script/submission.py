@@ -8,9 +8,6 @@ import re
 import pandas
 from numpy import logical_and
 
-user = "Webin-41995"
-pwd = "775632"
-
 template_folder = "data"
 submission_file = pjoin(template_folder, 'submission.xml')
 
