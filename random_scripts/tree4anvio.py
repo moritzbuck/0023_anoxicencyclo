@@ -22,7 +22,7 @@ nodes = list(tree.iter_leaves())
 
 sub_tree = tree.prune([n for n in tree.iter_leaves() if "mOTU" in n.name or n.name in rnds], preserve_branch_length=True)
 
-tree.write(outfile="representative_tree/bacteria_pruned.tree")
+sub_tree.write(outfile="representative_tree/bacteria_pruned.tree")
 motu_md = pandas.read_csv("metadata/mOTU_stats.csv", index_col=0)
 
 gtdbid2fam.update(motu_md.consensus_tax.to_dict())
@@ -82,7 +82,5 @@ anvio_table.loc[["unclassified" in t.split(";")[-4] for t in anvio_table.consens
 
 tax = pandas.DataFrame.from_dict({k : {kk : vv[3:] for kk,vv in zip(["Phylum", "Class", "Order", "Family"],v.split(";")[1:5]) } for k,v in anvio_table.consensus_tax.items()}, orient="index")
 anvio_table = anvio_table.join(tax)
-
-
 
 anvio_table.to_csv("anvio/metadata.csv", sep="\t", index_label="species")
