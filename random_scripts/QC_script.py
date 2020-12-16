@@ -11,6 +11,8 @@ def parse_fastqc_file(lib):
 
 libs = [l for l in os.listdir('fastqcs/') if l.endswith("_fastqc")]
 data_by_lib = { l : parse_fastqc_file(l) for l in tqdm(libs)}
+with open("fastqc_data_by_library.json", "w") as handle:
+    json.dump(data_by_lib, handle, indent=2, sort_keys=True)
 
 samples = {l.split("_")[0] : {'fwd' : [], 'rev' : []} for l in libs}
 for l in libs:
